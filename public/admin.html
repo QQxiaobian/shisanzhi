@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理后台 · 十三支</title>
+  <link rel="stylesheet" href="/css/style.css?v=2" />
+  <link rel="stylesheet" href="/css/admin.css?v=2" />
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <div id="admin-app">
+    <section id="admin-login" class="screen active admin-login-screen">
+      <div class="admin-login-box">
+        <div class="brand-kicker">SYSTEM CONSOLE</div>
+        <h1 class="brand-title admin-title">管理后台</h1>
+        <p class="admin-sub">THIRTEEN · USER MANAGEMENT</p>
+        <form id="admin-login-form" class="pixel-panel login-panel">
+          <div class="panel-title"><i class="dot"></i> ADMIN LOGIN</div>
+          <label class="field"><span>管理员账号</span><input id="admin-username" type="text" autocomplete="username" required /></label>
+          <label class="field"><span>密码</span><input id="admin-password" type="password" autocomplete="current-password" required /></label>
+          <button class="btn btn-primary btn-wide" id="admin-login-btn" type="submit">进入控制台</button>
+          <p class="form-error" id="admin-login-error"></p>
+          <p class="hint">仅限管理员账号登录 · 默认 admin / admin123</p>
+        </form>
+        <a class="back-link" href="/">← 返回游戏</a>
+      </div>
+    </section>
+
+    <section id="admin-dashboard" class="screen">
+      <header class="topbar">
+        <div class="logo-small">十三支<span>ADMIN CONSOLE</span></div>
+        <div class="topbar-mid"><span class="online-pill"><i></i> 在线 <b id="admin-online">0</b></span></div>
+        <div class="topbar-user">
+          <span id="admin-name">-</span>
+          <span class="role-tag">ADMIN</span>
+          <a href="/" class="link-admin">返回游戏</a>
+          <button class="btn btn-tiny btn-danger" id="admin-logout">退出</button>
+        </div>
+      </header>
+
+      <main class="admin-main">
+        <div class="stat-cards">
+          <div class="pixel-panel stat-card"><div class="stat-label">USERS</div><div class="stat-value" id="sum-users">0</div><div class="stat-foot">注册用户</div></div>
+          <div class="pixel-panel stat-card"><div class="stat-label">ADMINS</div><div class="stat-value" id="sum-admins">0</div><div class="stat-foot">管理员</div></div>
+          <div class="pixel-panel stat-card"><div class="stat-label">ONLINE</div><div class="stat-value" id="sum-online">0</div><div class="stat-foot">当前在线</div></div>
+          <div class="pixel-panel stat-card"><div class="stat-label">GAMES</div><div class="stat-value" id="sum-games">0</div><div class="stat-foot">累计对局</div></div>
+        </div>
+
+        <div class="admin-grid">
+          <section class="pixel-panel create-user-panel">
+            <div class="panel-title"><i class="dot"></i> CREATE USER</div>
+            <p class="panel-note">所有玩家账号均由此创建；创建后把账号密码发给玩家。</p>
+            <label class="field"><span>账号（2-16 位）</span><input id="new-username" type="text" maxlength="16" placeholder="例如 player01" /></label>
+            <label class="field"><span>昵称</span><input id="new-name" type="text" maxlength="16" placeholder="例如 夜行者" /></label>
+            <label class="field"><span>初始密码（至少 6 位）</span><input id="new-password" type="text" maxlength="64" placeholder="例如 mech2026" /></label>
+            <label class="field"><span>角色</span>
+              <select id="new-role" class="admin-select"><option value="player">普通玩家</option><option value="admin">管理员</option></select>
+            </label>
+            <button class="btn btn-primary btn-wide" id="btn-create-user">创建用户</button>
+            <p class="form-error" id="create-error"></p>
+          </section>
+
+          <section class="pixel-panel user-panel">
+            <div class="panel-title"><i class="dot"></i> USER LIST <span class="panel-count" id="user-count">0</span></div>
+            <div class="user-table-wrap">
+              <table class="user-table">
+                <thead>
+                  <tr><th>账号 / 昵称</th><th>角色</th><th>状态</th><th>对局</th><th>第一</th><th>积分</th><th>最后登录</th><th>操作</th></tr>
+                </thead>
+                <tbody id="user-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="pixel-panel settings-panel">
+          <div class="panel-title"><i class="dot"></i> 功能设置</div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">记牌器</div>
+              <div class="setting-desc">开启后，游戏内显示各点数剩余张数（需管理员开通）。</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-card-counter" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="pixel-panel room-panel">
+          <div class="panel-title"><i class="dot"></i> LIVE ROOMS <span class="panel-count" id="admin-room-count">0</span></div>
+          <div id="admin-room-list" class="admin-room-list"></div>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <!-- 重置密码 -->
+  <div class="overlay" id="overlay-reset" hidden>
+    <div class="pixel-panel modal small-modal">
+      <div class="modal-head">
+        <div class="modal-kicker">RESET PASSWORD</div>
+        <h2 id="reset-title">重置密码</h2>
+      </div>
+      <label class="field"><span>新密码（至少 6 位）</span><input id="reset-password" type="text" maxlength="64" /></label>
+      <p class="form-error" id="reset-error"></p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-reset-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-reset-save">确认重置</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-toast" class="toast" hidden></div>
+  <script src="/js/admin.js?v=2"></script>
+</body>
+</html>

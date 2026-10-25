@@ -1,0 +1,21 @@
+services:
+  thirteen-bid:
+    build: .
+    image: thirteen-bid:latest
+    container_name: thirteen-bid
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      # 首次启动时创建的管理员账号（已存在则忽略）
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # 生产环境请务必替换为随机长字符串
+      TOKEN_SECRET: ${TOKEN_SECRET:-please-change-this-secret}
+    volumes:
+      - thirteen-data:/app/data
+
+volumes:
+  thirteen-data:

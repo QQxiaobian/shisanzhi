@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#070a10" />
+  <title>十三支 · THIRTEEN | 四人联机扑克</title>
+  <link rel="stylesheet" href="/css/style.css?v=2" />
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <div id="app">
+    <!-- ===================== 登录 ===================== -->
+    <section id="screen-login" class="screen active">
+      <div class="login-shell">
+        <div class="brand-block">
+          <div class="brand-kicker">FOUR PLAYER CARD BATTLE</div>
+          <h1 class="brand-title"><span>十</span><span>三</span><span>支</span></h1>
+          <div class="brand-en">T H I R T E E N <b>·</b> 撞</div>
+          <div class="brand-tags">
+            <span>52 CARDS</span><span>4 PLAYERS</span><span>NO JOKER</span>
+          </div>
+        </div>
+
+        <form id="login-form" class="pixel-panel login-panel" autocomplete="on">
+          <div class="panel-title"><i class="dot"></i> PLAYER LOGIN</div>
+          <label class="field">
+            <span>账号 / USERNAME</span>
+            <input id="login-username" name="username" type="text" autocomplete="username" placeholder="输入账号" maxlength="16" required />
+          </label>
+          <label class="field">
+            <span>密码 / PASSWORD</span>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="输入密码" maxlength="64" required />
+          </label>
+          <button type="submit" class="btn btn-primary btn-wide" id="login-btn">进入战场</button>
+          <p class="form-error" id="login-error"></p>
+          <p class="hint">账号由管理员创建。初始管理员：<code>admin / admin123</code></p>
+        </form>
+
+        <div class="login-side">
+          <div class="pixel-panel mini-card">
+            <div class="mini-card-head">本局牌力</div>
+            <div class="rank-chain">
+              <span class="rank-chip hot">千弹</span><span class="arrow">›</span>
+              <span class="rank-chip">炸弹</span><span class="arrow">›</span>
+              <span class="rank-chip bump">撞</span><span class="arrow">›</span>
+              <span class="rank-chip">同牌型</span>
+            </div>
+            <div class="mini-card-body">单张 · 对子 · 炸弹(3张) · 千弹(4张)<br />黑桃3 强制首出，撞用同点对子。</div>
+          </div>
+          <button class="btn btn-ghost btn-wide" id="login-rules">查看完整规则</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 大厅 ===================== -->
+    <section id="screen-lobby" class="screen">
+      <header class="topbar">
+        <div class="logo-small">十三支<span>THIRTEEN</span></div>
+        <div class="topbar-mid">
+          <span class="online-pill"><i></i> 在线 <b id="online-count">0</b></span>
+        </div>
+        <div class="topbar-user">
+          <span id="my-name">-</span>
+          <span class="role-tag" id="my-role">PLAYER</span>
+          <a href="/admin" class="link-admin" id="admin-link" hidden>后台</a>
+          <button class="btn btn-tiny" id="btn-change-pw">改密</button>
+          <button class="btn btn-tiny btn-danger" id="btn-logout">退出</button>
+        </div>
+      </header>
+
+      <main class="lobby-grid">
+        <section class="pixel-panel create-panel">
+          <div class="panel-title"><i class="dot"></i> CREATE ROOM</div>
+          <p class="panel-note">创建房间后把房号发给好友，四人到齐即开。</p>
+          <label class="field">
+            <span>房间名</span>
+            <input id="room-name" type="text" maxlength="20" placeholder="例如：午夜机甲局" />
+          </label>
+          <button class="btn btn-primary btn-wide" id="btn-create-room">创建房间</button>
+          <div class="divider"><span>或</span></div>
+          <label class="field">
+            <span>房号加入</span>
+            <input id="join-code" type="text" maxlength="8" placeholder="输入 5 位房号" />
+          </label>
+          <button class="btn btn-ghost btn-wide" id="btn-join-room">加入房间</button>
+        </section>
+
+        <section class="pixel-panel rooms-panel">
+          <div class="panel-title"><i class="dot"></i> ROOM LIST <span class="panel-count" id="room-count">0</span></div>
+          <div id="room-list" class="room-list">
+            <div class="empty-state">暂无房间，创建一间吧。</div>
+          </div>
+        </section>
+
+        <aside class="lobby-side">
+          <div class="pixel-panel profile-panel">
+            <div class="panel-title"><i class="dot"></i> MY RECORD</div>
+            <div class="stat-grid">
+              <div><b id="stat-games">0</b><span>对局</span></div>
+              <div><b id="stat-wins">0</b><span>第一</span></div>
+              <div><b id="stat-score">0</b><span>总积分</span></div>
+            </div>
+            <div class="profile-id" id="profile-id">-</div>
+            <button class="btn btn-ghost btn-wide" id="btn-history" style="margin-top:10px">历史战绩</button>
+          </div>
+          <div class="pixel-panel tips-panel">
+            <div class="panel-title"><i class="dot"></i> QUICK RULES</div>
+            <ul class="tips">
+              <li>黑桃3持有者强制首出，且首出必须含黑桃3。</li>
+              <li>单张可被同点对子「撞」，撞只能用炸弹/千弹压。</li>
+              <li>能压必须压，系统禁止主动 Pass。</li>
+              <li>手牌不能只剩 2，末家要向第一名上缴 3 张。</li>
+            </ul>
+            <button class="btn btn-ghost btn-wide" id="lobby-rules">完整规则</button>
+          </div>
+        </aside>
+      </main>
+    </section>
+
+    <!-- ===================== 房间等候 ===================== -->
+    <section id="screen-room" class="screen">
+      <header class="topbar">
+        <div class="logo-small">十三支<span>ROOM</span></div>
+        <div class="topbar-mid">
+          <span class="room-code-pill">房号 <b id="room-code">-----</b></span>
+          <button class="btn btn-tiny" id="btn-copy-code">复制</button>
+        </div>
+        <div class="topbar-user">
+          <span id="room-my-name">-</span>
+          <button class="btn btn-tiny btn-danger" id="btn-leave-room">离开</button>
+        </div>
+      </header>
+
+      <div class="room-shell">
+        <div class="pixel-panel room-head">
+          <div>
+            <div class="room-name" id="room-title">ROOM</div>
+            <div class="room-sub" id="room-sub">等待玩家加入</div>
+          </div>
+          <div class="room-status" id="room-status">WAITING</div>
+        </div>
+
+        <div class="seat-grid" id="room-seats"></div>
+
+        <div class="room-actions">
+          <button class="btn btn-ghost" id="btn-add-bot">+ 添加机器人</button>
+          <button class="btn btn-primary" id="btn-start">开始游戏</button>
+          <span class="room-hint" id="room-hint">需要 4 个座位</span>
+        </div>
+
+        <div class="pixel-panel room-scoreboard" id="room-scoreboard" hidden>
+          <div class="panel-title"><i class="dot"></i> CUMULATIVE SCORE</div>
+          <div id="room-score-list" class="score-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 牌局 ===================== -->
+    <section id="screen-game" class="screen game-screen">
+      <header class="game-hud">
+        <div class="hud-left">
+          <div class="hud-round" id="hud-round">ROUND 01</div>
+          <div class="hud-sub" id="hud-dealer">发牌：-</div>
+        </div>
+        <div class="hud-center">
+          <div class="hud-turn" id="hud-turn">等待中</div>
+          <div class="turn-bar"><i id="turn-bar-fill"></i></div>
+        </div>
+        <div class="hud-right">
+          <div class="hud-score">我的收牌 <b id="hud-collected">0</b> / 13</div>
+          <div class="hud-sub">累计积分 <b id="hud-total">0</b></div>
+          <button class="btn btn-tiny" id="btn-counter" hidden>记牌器</button>
+          <button class="btn btn-tiny" id="btn-game-rules">规则</button>
+          <button class="btn btn-tiny" id="btn-game-leave">离开</button>
+        </div>
+      </header>
+
+      <div class="arena">
+        <div class="seat-top" id="seat-top"></div>
+        <div class="seat-left" id="seat-left"></div>
+        <div class="seat-right" id="seat-right"></div>
+        <div class="seat-bottom" id="seat-bottom"></div>
+
+        <div class="table-core">
+          <div class="base-strip" id="base-strip">
+            <span class="base-label">等待首出…</span>
+          </div>
+          <div class="pile" id="pile"></div>
+          <div class="bump-alert" id="bump-alert" hidden>
+            <div class="bump-title">撞！</div>
+            <div class="bump-desc" id="bump-desc">可用同点对子抢撞</div>
+            <div class="bump-bar"><i id="bump-bar-fill"></i></div>
+          </div>
+          <div class="table-brand">THIRTEEN</div>
+        </div>
+
+        <aside class="log-panel pixel-panel">
+          <div class="panel-title"><i class="dot"></i> BATTLE LOG</div>
+          <div id="log-list" class="log-list"></div>
+        </aside>
+
+        <aside class="counter-panel pixel-panel" id="counter-panel" hidden>
+          <div class="panel-title"><i class="dot"></i> 记牌器 <span class="panel-count" id="counter-count">0/52</span></div>
+          <div id="counter-grid" class="counter-grid"></div>
+        </aside>
+      </div>
+
+      <div class="handbar">
+        <div class="hand-head">
+          <div class="hand-seat" id="hand-seat">YOU</div>
+          <div class="hand-status" id="hand-status">等待发牌</div>
+          <div class="hand-selected" id="hand-selected"></div>
+        </div>
+        <div class="hand-scroll">
+          <div id="hand" class="hand"></div>
+          <div id="hand-empty" class="hand-empty" hidden>手牌已出完</div>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-ghost btn-pass" id="btn-pass" disabled>不要</button>
+          <button class="btn btn-bump" id="btn-bump" hidden>撞！</button>
+          <button class="btn btn-primary btn-play" id="btn-play" disabled>出牌</button>
+        </div>
+        <div class="hand-hint" id="hand-hint">等待轮到你</div>
+      </div>
+    </section>
+
+    <!-- ===================== 结算 ===================== -->
+    <div class="overlay" id="overlay-settle" hidden>
+      <div class="pixel-panel modal settle-modal">
+        <div class="modal-head">
+          <div class="modal-kicker">ROUND SETTLEMENT</div>
+          <h2 id="settle-title">第 1 局结算</h2>
+        </div>
+        <div class="settle-table" id="settle-table"></div>
+        <div class="handover-note" id="handover-note" hidden></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="btn-settle-lobby">返回大厅</button>
+          <button class="btn btn-primary" id="btn-next-round" hidden>下一局</button>
+          <span class="wait-note" id="settle-wait" hidden>等待房主开始下一局…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== 上缴 ===================== -->
+    <div class="overlay" id="overlay-handover" hidden>
+      <div class="pixel-panel modal handover-modal">
+        <div class="modal-head">
+          <div class="modal-kicker">TRIBUTE · 第四名</div>
+          <h2 id="handover-title">上缴 3 张手牌</h2>
+          <p class="modal-desc" id="handover-desc">选择 3 张手牌交给第一名，不计入收牌计分。</p>
+        </div>
+        <div class="handover-timer"><i id="handover-bar-fill"></i></div>
+        <div class="handover-hand" id="handover-hand"></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="btn-handover-confirm" disabled>确认上缴 <b id="handover-count">0</b>/3</button>
+        </div>
+        <p class="wait-note" id="handover-wait" hidden>第四名正在选择上缴牌…</p>
+      </div>
+    </div>
+
+    <!-- ===================== 规则 ===================== -->
+    <div class="overlay" id="overlay-rules" hidden>
+      <div class="pixel-panel modal rules-modal">
+        <div class="modal-head">
+          <div class="modal-kicker">RULE BOOK</div>
+          <h2>十三支 · 完整规则</h2>
+        </div>
+        <div class="rules-body">
+          <h3>一、基础</h3>
+          <p>4 人 · 标准 52 张（无王）· 每人 13 张。合法牌型仅有：<b>单张</b>、<b>对子</b>（2 张同点）、<b>炸弹</b>（3 张同点）、<b>千弹</b>（4 张同点）。禁止顺子、连对、三带、同花等。</p>
+          <p class="rank-line">牌力：2 &gt; A &gt; K &gt; Q &gt; J &gt; 10 &gt; 9 &gt; 8 &gt; 7 &gt; 6 &gt; 5 &gt; 4 &gt; 3</p>
+          <h3>二、首出与发牌</h3>
+          <p>持<b>黑桃3</b>者本局强制第一个出牌，首出必须包含黑桃3（单张♠3 / 含♠3的对3 / 炸弹3 / 千弹3）。下一局由上一局第四名发牌，但先手仍然是黑桃3持有者。</p>
+          <h3>三、压制优先级</h3>
+          <p class="rank-line">千弹 &gt; 炸弹 &gt; 撞 &gt; 普通同牌型点数压制</p>
+          <ul>
+            <li>单张只能被更大单张压制。</li>
+            <li>普通对子只能被更大普通对子压制。</li>
+            <li>炸弹可压单张、对子、撞；只被更大炸弹或千弹压制。</li>
+            <li>千弹可压单张、对子、撞、炸弹；只被更大千弹压制。</li>
+          </ul>
+          <h3>四、撞</h3>
+          <p>当前基准是<b>单张</b>时，任意玩家可在倒计时内用<b>同点数对子</b>抢撞，先提交者成功，其余失效。撞成功后只有炸弹、千弹能压。基准是对子/炸弹/千弹时不能撞。</p>
+          <h3>五、强制出牌</h3>
+          <p>只要手牌中存在合规可压制的牌，就必须出牌，禁止主动 Pass；完全无法压制时才允许「不要」。</p>
+          <h3>六、禁止留 2</h3>
+          <p>任意一次出牌后，若剩余手牌全部为 2，则禁止该次出牌。例：手牌 2、3 时不能先出 3，只能先出 2。</p>
+          <h3>七、一轮与名次</h3>
+          <p>连续三家 Pass 后，本轮最后出牌者收走桌面所有牌，并获得下一轮先手。按出完手牌顺序排名，第三名出完时游戏结束，剩余一人为第四名。</p>
+          <h3>八、末家与结算</h3>
+          <p>第四名结算前须自选 3 张手牌交给第一名（不计入收牌计分）。每人收牌数对比基准 13：多出多少赢多少分，少多少输多少分，多局累加。</p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="btn-close-rules">知道了</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== 改密 ===================== -->
+    <div class="overlay" id="overlay-password" hidden>
+      <div class="pixel-panel modal small-modal">
+        <div class="modal-head">
+          <div class="modal-kicker">ACCOUNT</div>
+          <h2>修改密码</h2>
+        </div>
+        <label class="field"><span>原密码</span><input id="pw-old" type="password" maxlength="64" /></label>
+        <label class="field"><span>新密码（至少 6 位）</span><input id="pw-new" type="password" maxlength="64" /></label>
+        <p class="form-error" id="pw-error"></p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="btn-pw-cancel">取消</button>
+          <button class="btn btn-primary" id="btn-pw-save">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== 历史战绩 ===================== -->
+    <div class="overlay" id="overlay-history" hidden>
+      <div class="pixel-panel modal history-modal">
+        <div class="modal-head">
+          <div class="modal-kicker">BATTLE HISTORY</div>
+          <h2>历史战绩</h2>
+        </div>
+        <div class="history-table" id="history-table"></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="btn-close-history">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+    <div id="conn-banner" class="conn-banner" hidden>连接已断开，正在重连…</div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js?v=2"></script>
+</body>
+</html>
