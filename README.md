@@ -14,6 +14,8 @@
 ## 快速开始（本地）
 
 ```bash
+git clone https://github.com/QQxiaobian/shisanzhi.git
+cd shisanzhi
 npm install
 npm start
 ```
@@ -25,6 +27,8 @@ npm start
 ## Docker 部署
 
 ```bash
+git clone https://github.com/QQxiaobian/shisanzhi.git
+cd shisanzhi
 docker compose up -d --build
 ```
 
