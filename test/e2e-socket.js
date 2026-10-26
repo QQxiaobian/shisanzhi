@@ -229,11 +229,13 @@ async function main() {
     if (row.scoreDelta !== row.collected - 13) throw new Error(`计分公式错误: ${row.name}`);
   }
   const totalCollected = rows.reduce((n, r) => n + r.collected, 0);
-  if (totalCollected > 52) throw new Error('收牌数超过 52');
+  if (totalCollected !== 52) throw new Error(`收牌总计应为 52，实际 ${totalCollected}`);
+  const totalDelta = rows.reduce((n, r) => n + r.scoreDelta, 0);
+  if (totalDelta !== 0) throw new Error(`本局输赢总和应为 0，实际 ${totalDelta}`);
   if (settleData.results.handover.cards.length === 0) throw new Error('缺少上缴牌');
   if (!firstPlayChecked) throw new Error('没有验证到首出');
   if (!passGuardChecked) throw new Error('没有验证到强制出牌');
-  console.log(`\n[PASS] 收牌总计 ${totalCollected} 张 · 名次/计分/上缴/强制出牌 校验通过`);
+  console.log(`\n[PASS] 收牌总计 ${totalCollected} 张 · 输赢总和 ${totalDelta} · 名次/计分/上缴/强制出牌 校验通过`);
   if (!nonTurnPlayChecked) console.log('[warn] 非当前玩家校验未触发（状态到达顺序原因）');
 
   sockets.forEach((s) => s.disconnect());

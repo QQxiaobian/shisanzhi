@@ -35,7 +35,9 @@
     pollTimer: null,
     rejoinTried: false,
     cardCounter: false,
-    counterVisible: false
+    counterVisible: false,
+    authMode: 'login',
+    allowRegister: false
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -47,6 +49,17 @@
     loginPassword: $('#login-password'),
     loginError: $('#login-error'),
     loginBtn: $('#login-btn'),
+    authTabs: $('#auth-tabs'),
+    authLoginFields: $('#auth-login-fields'),
+    authRegisterFields: $('#auth-register-fields'),
+    tabRegister: $('#tab-register'),
+    panelTitleText: $('#panel-title-text'),
+    loginHint: $('#login-hint'),
+    regUsername: $('#reg-username'),
+    regName: $('#reg-name'),
+    regPassword: $('#reg-password'),
+    regPassword2: $('#reg-password2'),
+    registerBtn: $('#register-btn'),
     onlineCount: $('#online-count'),
     myName: $('#my-name'),
     myRole: $('#my-role'),
@@ -319,6 +332,7 @@
       localStorage.removeItem(TOKEN_KEY);
     }
     showLogin();
+    loadSettings();
   }
 
   function showLogin() {
@@ -460,7 +474,28 @@
     const res = await api('/api/settings');
     if (res.ok) {
       state.cardCounter = !!res.data.cardCounter;
+      state.allowRegister = !!res.data.allowRegister;
+      applyRegisterAvailability();
     }
+  }
+
+  function applyRegisterAvailability() {
+    const open = state.allowRegister;
+    if (el.tabRegister) el.tabRegister.hidden = !open;
+    if (el.authTabs) el.authTabs.classList.toggle('single', !open);
+    if (!open && state.authMode === 'register') setAuthMode('login');
+    updateLoginHint();
+  }
+
+  function updateLoginHint() {
+    if (!el.loginHint) return;
+    if (!state.allowRegister) {
+      el.loginHint.innerHTML = '账号由管理员创建（注册功能已关闭）。初始管理员：<code>admin / admin123</code>';
+      return;
+    }
+    el.loginHint.innerHTML = state.authMode === 'register'
+      ? '注册后自动登录。账号 2-16 位，密码至少 6 位。'
+      : '还没有账号？切换到「注册」即可创建。初始管理员：<code>admin / admin123</code>';
   }
 
   async function openHistory() {
@@ -523,19 +558,85 @@
     el.counterCount.textContent = `${total}/52`;
   }
 
-  async function doLogin(e) {
-    e.preventDefault();
+  function setAuthMode(mode) {
+    const register = mode === 'register';
+    state.authMode = register ? 'register' : 'login';
+    el.authLoginFields.hidden = register;
+    el.authRegisterFields.hidden = !register;
+    el.panelTitleText.textContent = register ? 'PLAYER SIGN UP' : 'PLAYER LOGIN';
     el.loginError.textContent = '';
-    el.loginBtn.disabled = true;
-    el.loginBtn.textContent = '连接中…';
+    $$('.auth-tab').forEach((tab) => {
+      tab.classList.toggle('active', tab.dataset.authTab === state.authMode);
+    });
+    const input = register ? el.regUsername : el.loginUsername;
+    updateLoginHint();
+    if (input) input.focus();
+  }
+
+  function enterGame(token, user, welcome) {
+    state.token = token;
+    state.user = user;
+    localStorage.setItem(TOKEN_KEY, token);
+    resetClientState();
+    applyUser();
+    loadSettings();
+    showScreen('lobby');
+    renderLobby();
+    connectSocket();
+    toast(welcome);
+  }
+
+  async function onAuthSubmit(e) {
+    e.preventDefault();
+    if (state.authMode === 'register') return doRegister();
+    return doLogin();
+  }
+
+  async function doRegister() {
+    el.loginError.textContent = '';
+    const username = el.regUsername.value.trim();
+    const name = el.regName.value.trim();
+    const password = el.regPassword.value;
+    const password2 = el.regPassword2.value;
+    if (!username || !password) {
+      el.loginError.textContent = '请填写账号和密码';
+      return;
+    }
+    if (password.length < 6) {
+      el.loginError.textContent = '密码至少 6 位';
+      return;
+    }
+    if (password !== password2) {
+      el.loginError.textContent = '两次输入的密码不一致';
+      return;
+    }
+    el.registerBtn.disabled = true;
+    el.registerBtn.textContent = '创建中…';
+    const res = await api('/api/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, name: name || username })
+    });
+    el.registerBtn.disabled = false;
+    el.registerBtn.textContent = '创建账号并进入';
+    if (!res.ok) {
+      el.loginError.textContent = res.error;
+      return;
+    }
+    el.regPassword.value = '';
+    el.regPassword2.value = '';
+    enterGame(res.data.token, res.data.user, `注册成功，欢迎 ${res.data.user.name}`);
+  }
+
+  async function doLogin() {
+    el.loginError.textContent = '';
     const username = el.loginUsername.value.trim();
     const password = el.loginPassword.value;
     if (!username || !password) {
       el.loginError.textContent = '请输入账号和密码';
-      el.loginBtn.disabled = false;
-      el.loginBtn.textContent = '进入战场';
       return;
     }
+    el.loginBtn.disabled = true;
+    el.loginBtn.textContent = '连接中…';
     const res = await api('/api/login', { method: 'POST', body: JSON.stringify({ username, password }) });
     el.loginBtn.disabled = false;
     el.loginBtn.textContent = '进入战场';
@@ -543,16 +644,7 @@
       el.loginError.textContent = res.error;
       return;
     }
-    state.token = res.data.token;
-    state.user = res.data.user;
-    localStorage.setItem(TOKEN_KEY, state.token);
-    resetClientState();
-    applyUser();
-    loadSettings();
-    showScreen('lobby');
-    renderLobby();
-    connectSocket();
-    toast(`欢迎回来，${state.user.name}`);
+    enterGame(res.data.token, res.data.user, `欢迎回来，${res.data.user.name}`);
   }
 
   function resetClientState() {
@@ -587,6 +679,8 @@
     resetClientState();
     el.connBanner.hidden = true;
     showLogin();
+    setAuthMode('login');
+    loadSettings();
     if (!silent) toast('已退出登录');
   }
 
@@ -1168,7 +1262,8 @@
       const from = g.seats.find((s) => s.seat === r.handover.fromSeat);
       const to = g.seats.find((s) => s.seat === r.handover.toSeat);
       el.handoverNote.hidden = false;
-      el.handoverNote.innerHTML = `<b>上缴</b> ${esc(from ? from.name : '第四名')} → ${esc(to ? to.name : '第一名')} · ${r.handover.cards.length} 张（不计入收牌计分）
+      el.handoverNote.innerHTML = `<b>上缴</b> ${esc(from ? from.name : '第四名')} → ${esc(to ? to.name : '第一名')} · ${r.handover.cards.length} 张
+        <span style="color:var(--muted);font-size:11px">（末家剩余手牌计入收牌；上缴部分末家 -${r.handover.cards.length}、头家 +${r.handover.cards.length}）</span>
         <div class="tribute-cards">${r.handover.cards.map(miniCard).join('')}</div>`;
     } else {
       el.handoverNote.hidden = true;
@@ -1184,7 +1279,10 @@
   // =========================================================
 
   function bindUi() {
-    el.loginForm.addEventListener('submit', doLogin);
+    el.loginForm.addEventListener('submit', onAuthSubmit);
+    $$('.auth-tab').forEach((tab) => {
+      tab.addEventListener('click', () => setAuthMode(tab.dataset.authTab));
+    });
     $('#btn-logout').addEventListener('click', () => logout());
     $('#login-rules').addEventListener('click', () => openOverlay(el.overlayRules));
     $('#lobby-rules').addEventListener('click', () => openOverlay(el.overlayRules));

@@ -28,14 +28,16 @@ class Store {
       if (!parsed.secret) parsed.secret = crypto.randomBytes(32).toString('hex');
       if (!parsed.stats) parsed.stats = {};
       if (!Array.isArray(parsed.games)) parsed.games = [];
-      if (!parsed.settings) parsed.settings = { cardCounter: false };
+      if (!parsed.settings) parsed.settings = {};
+      if (parsed.settings.cardCounter === undefined) parsed.settings.cardCounter = false;
+      if (parsed.settings.allowRegister === undefined) parsed.settings.allowRegister = true;
       return parsed;
     } catch (e) {
       const data = {
         secret: process.env.TOKEN_SECRET || crypto.randomBytes(32).toString('hex'),
         users: [],
         games: [],
-        settings: { cardCounter: false },
+        settings: { cardCounter: false, allowRegister: true },
         createdAt: nowIso()
       };
       this.persist(data);
@@ -85,8 +87,8 @@ class Store {
 
   createUser({ username, name, password, role = 'player' }) {
     const uname = Store.normalizeUsername(username);
-    if (!uname) throw new Error('用户名不能为空');
-    if (this.findByUsername(uname)) throw new Error('用户名已存在');
+    if (!uname) throw new Error('账号不能为空');
+    if (this.findByUsername(uname)) throw new Error('账号已存在');
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
     const user = {

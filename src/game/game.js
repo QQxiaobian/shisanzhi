@@ -418,6 +418,8 @@ class Game {
 
     // 上缴固定 3 张；若第四名手牌不足，用其本局收牌补足
     const TRIBUTE = 3;
+    // 记录上缴前第四名剩余手牌数：结算时计入其收牌，保证四人收牌合计恒为 52
+    const surplus = fourth.hand.length;
     let toppedUp = 0;
     if (fourth.hand.length < TRIBUTE && fourth.collectedCards.length > 0) {
       const extra = fourth.collectedCards.slice(0, TRIBUTE - fourth.hand.length);
@@ -437,6 +439,7 @@ class Game {
       toSeat: first.seat,
       need,
       toppedUp,
+      surplus,
       deadline: Date.now() + HANDOVER_MS,
       chosen: null
     };
@@ -488,6 +491,18 @@ class Game {
     this.lastFourthSeat = fourthSeat;
     this.dealerSeat = fourthSeat;
 
+    // 收牌数口径：末家剩余手牌计入其收牌，上缴的牌由末家转给头家，
+    // 四人收牌合计恒为 52，因此本局输赢总和为 0
+    const chosen = this.handover && this.handover.chosen ? this.handover.chosen : [];
+    const surplus = this.handover ? this.handover.surplus || 0 : 0;
+    if (surplus > 0) {
+      this.seats[fourthSeat].collected += surplus;
+    }
+    if (fromSeat != null && toSeat != null && chosen.length > 0) {
+      this.seats[fromSeat].collected -= chosen.length;
+      this.seats[toSeat].collected += chosen.length;
+    }
+
     const rows = this.seats.map((s) => {
       const scoreDelta = s.collected - 13;
       s.totalScore += scoreDelta;
@@ -505,7 +520,6 @@ class Game {
     });
     rows.sort((a, b) => a.finishRank - b.finishRank);
 
-    const chosen = this.handover && this.handover.chosen ? this.handover.chosen : [];
     this.results = {
       round: this.round,
       rows,

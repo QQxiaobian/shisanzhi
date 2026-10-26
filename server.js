@@ -41,10 +41,10 @@ function validateNewUser(body) {
   const username = String(body.username || '').trim();
   const password = String(body.password || '');
   const name = String(body.name || username).trim();
-  if (!isValidUsername(username)) return '用户名需为 2-16 位字母/数字/下划线/中文';
+  if (!isValidUsername(username)) return '账号需为 2-16 位字母/数字/下划线/中文';
   if (!isValidPassword(password)) return '密码长度需为 6-64 位';
   if (!name || name.length > 16) return '昵称需为 1-16 个字符';
-  if (store.findByUsername(username)) return '用户名已存在';
+  if (store.findByUsername(username)) return '账号已存在';
   return null;
 }
 
@@ -66,6 +66,29 @@ app.get('/api/me', authMiddleware(store), (req, res) => {
   res.json({ user: publicUserOf(req.user) });
 });
 
+// ---------- 注册 ----------
+
+app.post('/api/register', (req, res) => {
+  if (!store.getSetting('allowRegister')) {
+    return res.status(403).json({ error: '注册功能已关闭，请联系管理员开通账号' });
+  }
+  const error = validateNewUser(req.body || {});
+  if (error) return res.status(400).json({ error });
+  try {
+    const user = store.createUser({
+      username: String(req.body.username).trim(),
+      name: String(req.body.name || req.body.username).trim(),
+      password: String(req.body.password),
+      role: 'player'
+    });
+    store.touchLogin(user);
+    const token = signToken({ sub: user.id, role: user.role }, store.secret);
+    res.status(201).json({ token, user: publicUserOf(user) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 app.post('/api/me/password', authMiddleware(store), (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
   if (!store.verifyPassword(req.user, oldPassword)) {
@@ -83,7 +106,10 @@ app.get('/api/health', (req, res) => {
 // ---------- 公共设置（记牌器开关等） ----------
 
 app.get('/api/settings', (req, res) => {
-  res.json({ cardCounter: !!store.getSetting('cardCounter') });
+  res.json({
+    cardCounter: !!store.getSetting('cardCounter'),
+    allowRegister: !!store.getSetting('allowRegister')
+  });
 });
 
 // ---------- 个人战绩 ----------
@@ -167,7 +193,10 @@ app.get('/api/admin/games', authMiddleware(store), adminMiddleware, (req, res) =
 });
 
 app.get('/api/admin/settings', authMiddleware(store), adminMiddleware, (req, res) => {
-  res.json({ cardCounter: !!store.getSetting('cardCounter') });
+  res.json({
+    cardCounter: !!store.getSetting('cardCounter'),
+    allowRegister: !!store.getSetting('allowRegister')
+  });
 });
 
 app.patch('/api/admin/settings', authMiddleware(store), adminMiddleware, (req, res) => {
@@ -175,7 +204,13 @@ app.patch('/api/admin/settings', authMiddleware(store), adminMiddleware, (req, r
   if (body.cardCounter !== undefined) {
     store.setSetting('cardCounter', !!body.cardCounter);
   }
-  res.json({ cardCounter: !!store.getSetting('cardCounter') });
+  if (body.allowRegister !== undefined) {
+    store.setSetting('allowRegister', !!body.allowRegister);
+  }
+  res.json({
+    cardCounter: !!store.getSetting('cardCounter'),
+    allowRegister: !!store.getSetting('allowRegister')
+  });
 });
 
 app.get('/admin', (req, res) => {

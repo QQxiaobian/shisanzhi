@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#070a10" />
   <title>十三支 · THIRTEEN | 四人联机扑克</title>
-  <link rel="stylesheet" href="/css/style.css?v=2" />
+  <link rel="stylesheet" href="/css/style.css?v=6" />
 </head>
 <body>
   <div class="bg-grid" aria-hidden="true"></div>
@@ -25,30 +25,59 @@
         </div>
 
         <form id="login-form" class="pixel-panel login-panel" autocomplete="on">
-          <div class="panel-title"><i class="dot"></i> PLAYER LOGIN</div>
-          <label class="field">
-            <span>账号 / USERNAME</span>
-            <input id="login-username" name="username" type="text" autocomplete="username" placeholder="输入账号" maxlength="16" required />
-          </label>
-          <label class="field">
-            <span>密码 / PASSWORD</span>
-            <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="输入密码" maxlength="64" required />
-          </label>
-          <button type="submit" class="btn btn-primary btn-wide" id="login-btn">进入战场</button>
+          <div class="panel-title"><i class="dot"></i> <span id="panel-title-text">PLAYER LOGIN</span></div>
+
+          <div class="auth-tabs" id="auth-tabs">
+            <button type="button" class="auth-tab active" data-auth-tab="login">登录 <span>LOGIN</span></button>
+            <button type="button" class="auth-tab" data-auth-tab="register" id="tab-register">注册 <span>SIGN UP</span></button>
+          </div>
+
+          <div id="auth-login-fields">
+            <label class="field">
+              <span>账号 / USERNAME</span>
+              <input id="login-username" name="username" type="text" autocomplete="username" placeholder="输入账号" maxlength="16" />
+            </label>
+            <label class="field">
+              <span>密码 / PASSWORD</span>
+              <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="输入密码" maxlength="64" />
+            </label>
+            <button type="submit" class="btn btn-primary btn-wide" id="login-btn">进入战场</button>
+          </div>
+
+          <div id="auth-register-fields" hidden>
+            <label class="field">
+              <span>账号 / USERNAME</span>
+              <input id="reg-username" name="reg-username" type="text" autocomplete="username" placeholder="2-16 位字母/数字/下划线/中文" maxlength="16" />
+            </label>
+            <label class="field">
+              <span>昵称 / NICKNAME</span>
+              <input id="reg-name" name="reg-name" type="text" autocomplete="nickname" placeholder="留空则使用账号名" maxlength="16" />
+            </label>
+            <label class="field">
+              <span>密码 / PASSWORD</span>
+              <input id="reg-password" name="reg-password" type="password" autocomplete="new-password" placeholder="至少 6 位" maxlength="64" />
+            </label>
+            <label class="field">
+              <span>确认密码 / CONFIRM</span>
+              <input id="reg-password2" name="reg-password2" type="password" autocomplete="new-password" placeholder="再次输入密码" maxlength="64" />
+            </label>
+            <button type="submit" class="btn btn-primary btn-wide" id="register-btn">创建账号并进入</button>
+          </div>
+
           <p class="form-error" id="login-error"></p>
-          <p class="hint">账号由管理员创建。初始管理员：<code>admin / admin123</code></p>
+          <p class="hint" id="login-hint">账号由管理员创建。初始管理员：<code>admin / admin123</code></p>
         </form>
 
         <div class="login-side">
-          <div class="pixel-panel mini-card">
-            <div class="mini-card-head">本局牌力</div>
+          <div class="pixel-panel power-card">
+            <div class="power-card-head">本局牌力</div>
             <div class="rank-chain">
               <span class="rank-chip hot">千弹</span><span class="arrow">›</span>
               <span class="rank-chip">炸弹</span><span class="arrow">›</span>
               <span class="rank-chip bump">撞</span><span class="arrow">›</span>
               <span class="rank-chip">同牌型</span>
             </div>
-            <div class="mini-card-body">单张 · 对子 · 炸弹(3张) · 千弹(4张)<br />黑桃3 强制首出，撞用同点对子。</div>
+            <div class="power-card-body">单张 · 对子 · 炸弹(3张) · 千弹(4张)<br />黑桃3 强制首出，撞用同点对子。</div>
           </div>
           <button class="btn btn-ghost btn-wide" id="login-rules">查看完整规则</button>
         </div>
@@ -335,6 +364,6 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/app.js?v=2"></script>
+  <script src="/js/app.js?v=6"></script>
 </body>
 </html>

@@ -43,6 +43,7 @@
     resetPassword: $('#reset-password'),
     resetError: $('#reset-error'),
     settingCardCounter: $('#setting-card-counter'),
+    settingAllowRegister: $('#setting-allow-register'),
     toast: $('#admin-toast')
   };
 
@@ -246,6 +247,20 @@
       }
       toast(enabled ? '记牌器已开启' : '记牌器已关闭');
     });
+
+    el.settingAllowRegister.addEventListener('change', async () => {
+      const enabled = el.settingAllowRegister.checked;
+      const res = await api('/api/admin/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ allowRegister: enabled })
+      });
+      if (!res.ok) {
+        el.settingAllowRegister.checked = !enabled;
+        toast(res.error || '设置失败');
+        return;
+      }
+      toast(enabled ? '已开放注册' : '已关闭注册');
+    });
   }
 
   async function patchUser(id, patch) {
@@ -282,6 +297,7 @@
     const res = await api('/api/admin/settings');
     if (res.ok) {
       el.settingCardCounter.checked = !!res.data.cardCounter;
+      el.settingAllowRegister.checked = !!res.data.allowRegister;
     }
   }
 

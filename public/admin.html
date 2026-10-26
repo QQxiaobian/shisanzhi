@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理后台 · 十三支</title>
-  <link rel="stylesheet" href="/css/style.css?v=2" />
-  <link rel="stylesheet" href="/css/admin.css?v=2" />
+  <link rel="stylesheet" href="/css/style.css?v=6" />
+  <link rel="stylesheet" href="/css/admin.css?v=6" />
 </head>
 <body>
   <div class="bg-grid" aria-hidden="true"></div>
@@ -52,7 +52,7 @@
         <div class="admin-grid">
           <section class="pixel-panel create-user-panel">
             <div class="panel-title"><i class="dot"></i> CREATE USER</div>
-            <p class="panel-note">所有玩家账号均由此创建；创建后把账号密码发给玩家。</p>
+            <p class="panel-note">管理员可在此创建账号；若已开放注册，玩家也能在登录页自行注册。</p>
             <label class="field"><span>账号（2-16 位）</span><input id="new-username" type="text" maxlength="16" placeholder="例如 player01" /></label>
             <label class="field"><span>昵称</span><input id="new-name" type="text" maxlength="16" placeholder="例如 夜行者" /></label>
             <label class="field"><span>初始密码（至少 6 位）</span><input id="new-password" type="text" maxlength="64" placeholder="例如 mech2026" /></label>
@@ -78,6 +78,16 @@
 
         <section class="pixel-panel settings-panel">
           <div class="panel-title"><i class="dot"></i> 功能设置</div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <div class="setting-name">开放注册</div>
+              <div class="setting-desc">开启后，玩家可在登录页自行注册账号；关闭后仅管理员可创建账号。</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-allow-register" />
+              <span class="slider"></span>
+            </label>
+          </div>
           <div class="setting-row">
             <div class="setting-info">
               <div class="setting-name">记牌器</div>
@@ -115,6 +125,6 @@
   </div>
 
   <div id="admin-toast" class="toast" hidden></div>
-  <script src="/js/admin.js?v=2"></script>
+  <script src="/js/admin.js?v=6"></script>
 </body>
 </html>
