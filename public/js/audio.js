@@ -98,7 +98,11 @@
       this._resumeBound = () => {
         this.ensure();
         if (this.bgmOn) this.startBGM();
-        // 只需要一次，之后不再移除（低开销）
+        // 解锁语音合成（部分浏览器需用户手势）
+        if (window.speechSynthesis) {
+          this._initVoices();
+          try { window.speechSynthesis.resume(); } catch (_) {}
+        }
       };
       ['click', 'keydown', 'touchstart'].forEach((ev) =>
         document.addEventListener(ev, this._resumeBound, { once: true, passive: true })
@@ -137,24 +141,72 @@
     }
     toggleSpeak(on) {
       this.speakOn = typeof on === 'boolean' ? on : !this.speakOn;
-      if (!this.speakOn && window.speechSynthesis) window.speechSynthesis.cancel();
+      if (!this.speakOn) this.stopSpeak();
       this._savePrefs();
       return this.speakOn;
     }
 
-    /** 语音播报（出牌等） */
-    speak(text) {
-      if (!this.speakOn) return;
+    // ---------- 语音播报（出牌等） ----------
+    _initVoices() {
       if (!window.speechSynthesis) return;
-      try {
+      const pick = () => {
+        const voices = window.speechSynthesis.getVoices();
+        // 优先选中文语音
+        this._zhVoice =
+          voices.find((v) => /zh(-|_)?CN/i.test(v.lang)) ||
+          voices.find((v) => /^zh/i.test(v.lang)) ||
+          null;
+      };
+      pick();
+      window.speechSynthesis.onvoiceschanged = pick;
+    }
+
+    stopSpeak() {
+      if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
+      }
+      this._speakQueue = [];
+      this._speaking = false;
+    }
+
+    /** 语音播报：加入队列顺序播放，避免连续出牌被打断 */
+    speak(text) {
+      if (!this.speakOn || !text) return;
+      if (!window.speechSynthesis) return;
+      if (!this._speakQueue) {
+        this._speakQueue = [];
+        this._speaking = false;
+        this._initVoices();
+      }
+      this._speakQueue.push(String(text));
+      this._drainSpeak();
+    }
+
+    _drainSpeak() {
+      if (this._speaking) return;
+      if (!this._speakQueue.length) return;
+      const text = this._speakQueue.shift();
+      this._speaking = true;
+      try {
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'zh-CN';
-        u.rate = 1.15;
+        if (this._zhVoice) u.voice = this._zhVoice;
+        u.rate = 1.2;
         u.pitch = 1;
-        u.volume = Math.max(0.3, this.masterVol);
+        u.volume = Math.max(0.4, this.masterVol);
+        u.onend = () => {
+          this._speaking = false;
+          this._drainSpeak();
+        };
+        u.onerror = () => {
+          this._speaking = false;
+          this._drainSpeak();
+        };
         window.speechSynthesis.speak(u);
-      } catch (_) {}
+      } catch (_) {
+        this._speaking = false;
+        this._drainSpeak();
+      }
     }
 
     // ---------- 背景音乐 ----------

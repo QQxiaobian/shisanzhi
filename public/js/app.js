@@ -94,7 +94,6 @@
     seatRight: $('#seat-right'),
     seatBottom: $('#seat-bottom'),
     baseStrip: $('#base-strip'),
-    playAnnounce: $('#play-announce'),
     pile: $('#pile'),
     bumpAlert: $('#bump-alert'),
     bumpDesc: $('#bump-desc'),
@@ -1360,25 +1359,9 @@
     masterVol.addEventListener('input', (e) => { A.setMasterVol(Number(e.target.value) / 100); });
   }
 
-  // 出牌播报横幅定时器
-  let announceTimer = null;
-
-  /** 显示出牌播报横幅 + 语音播报 */
-  function announcePlay(text, cls, speakText) {
+  /** 出牌语音播报 */
+  function announcePlay(speakText) {
     const A = window.Audio;
-    const node = el.playAnnounce;
-    if (!node) return;
-    node.className = `play-announce ${cls || ''}`.trim();
-    node.innerHTML = text;
-    node.hidden = false;
-    // 强制重排后再加 show 触发过渡
-    void node.offsetWidth;
-    node.classList.add('show');
-    if (announceTimer) clearTimeout(announceTimer);
-    announceTimer = setTimeout(() => {
-      node.classList.remove('show');
-      announceTimer = setTimeout(() => { node.hidden = true; }, 220);
-    }, 1600);
     if (A && speakText) A.speak(speakText);
   }
 
@@ -1388,8 +1371,8 @@
     if (!prev) return;
     if (g.phase === 'settled' && prev.phase !== 'settled') {
       const rank = g.you && g.you.finishRank;
-      if (rank === 1) { A && A.win(); announcePlay('🎉 你是头游！', 'hot', '你赢了，第一名'); }
-      else if (rank === 4) { A && A.lose(); announcePlay('末游…', '', '你是最后一名'); }
+      if (rank === 1) { A && A.win(); announcePlay('你赢了，第一名'); }
+      else if (rank === 4) { A && A.lose(); announcePlay('你是最后一名'); }
       else if (A) A.collect();
       return;
     }
@@ -1418,18 +1401,10 @@
 
       if (base.type === 'bump') {
         A && A.bump();
-        announcePlay(
-          `<span class="pa-name">${esc(displayName)}</span> 撞！<span class="pa-type">对${esc(label)}</span>`,
-          'bump',
-          `${displayName}撞，对${label}`
-        );
+        announcePlay(`${displayName}撞，对${label}`);
       } else {
         A && A.cardPlay();
-        announcePlay(
-          `<span class="pa-name">${esc(displayName)}</span> 打出<span class="pa-type">${esc(typeLabel)}</span>${esc(label)}`,
-          base.type === 'bomb' || base.type === 'thousand' ? 'hot' : '',
-          `${displayName}打出${typeLabel}${label}`
-        );
+        announcePlay(`${displayName}打出${typeLabel}${label}`);
       }
       return;
     }
@@ -1437,29 +1412,28 @@
     // Pass
     if (g.passes > (prev.passes || 0)) {
       A && A.pass();
-      // 找到刚 Pass 的玩家（turnSeat 已经移到下家，Pass 者是上一家）
       const passerSeat = g.turnSeat !== null ? (g.turnSeat + 3) % 4 : null;
       const passer = passerSeat !== null ? g.seats.find((s) => s.seat === passerSeat) : null;
       if (passer) {
         const displayName = g.you.seat === passer.seat ? '你' : passer.name;
-        announcePlay(`<span class="pa-name">${esc(displayName)}</span> 不要`, '', `${displayName}不要`);
+        announcePlay(`${displayName}不要`);
       }
       return;
     }
 
-    // 收牌：base 从有到无（新一墩开始）
+    // 收牌
     if (!base && prevBase) {
       A && A.collect();
       const lastPlay = prev.pile && prev.pile[prev.pile.length - 1];
       const collector = lastPlay ? g.seats.find((s) => s.seat === lastPlay.seat) : null;
       if (collector) {
         const displayName = g.you.seat === collector.seat ? '你' : collector.name;
-        announcePlay(`<span class="pa-name">${esc(displayName)}</span> 收走本轮牌`, '', null);
+        announcePlay(`${displayName}收牌`);
       }
       return;
     }
 
-    // 发牌：进入 dealing
+    // 发牌
     if (g.phase === 'playing' && prev.phase === 'dealing' && !base) {
       A && A.deal();
     }
