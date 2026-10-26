@@ -1226,11 +1226,15 @@ body {
 /* ===================== 音乐 / 音效面板 ===================== */
 .audio-panel {
   position: fixed;
-  top: 14px;
+  bottom: 14px;
   right: 14px;
   z-index: 1000;
   padding: 6px;
   width: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 6px;
 }
 .audio-toggle {
   width: 34px;
@@ -1248,7 +1252,6 @@ body {
 .audio-toggle:hover { border-color: var(--accent); }
 .audio-toggle.off #audio-icon { opacity: 0.35; }
 .audio-body {
-  margin-top: 6px;
   padding: 8px 10px;
   min-width: 200px;
   background: var(--panel-bg);
@@ -1272,6 +1275,6 @@ body {
 .audio-row .btn { min-width: 40px; padding: 2px 6px; font-size: 11px; }
 
 @media (max-width: 768px) {
-  .audio-panel { top: 8px; right: 8px; }
+  .audio-panel { bottom: 8px; right: 8px; }
   .audio-body { min-width: 170px; }
 }
