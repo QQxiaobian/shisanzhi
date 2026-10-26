@@ -1275,3 +1275,37 @@ body {
   .audio-panel { top: 8px; right: 8px; }
   .audio-body { min-width: 170px; }
 }
+
+/* ===================== 出牌播报 ===================== */
+.play-announce {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  z-index: 20;
+  padding: 14px 28px;
+  background: rgba(7, 10, 16, 0.92);
+  border: 2px solid var(--accent);
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 0 24px rgba(255, 107, 53, 0.35);
+}
+.play-announce.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.play-announce .pa-name { color: var(--accent); }
+.play-announce .pa-type { color: var(--yellow); margin: 0 6px; }
+.play-announce.bump { border-color: #ff5b7a; box-shadow: 0 0 24px rgba(255, 91, 122, 0.45); }
+.play-announce.hot { border-color: var(--yellow); box-shadow: 0 0 24px rgba(255, 214, 10, 0.45); }
+
+@media (max-width: 768px) {
+  .play-announce { font-size: 14px; padding: 10px 18px; }
+}

@@ -27,6 +27,7 @@
 
       this.bgmOn = true;
       this.sfxOn = true;
+      this.speakOn = true;
       this.masterVol = 0.6;
       this.bgmVol = 0.35;
       this.sfxVol = 0.6;
@@ -47,6 +48,7 @@
         const p = JSON.parse(raw);
         if (typeof p.bgmOn === 'boolean') this.bgmOn = p.bgmOn;
         if (typeof p.sfxOn === 'boolean') this.sfxOn = p.sfxOn;
+        if (typeof p.speakOn === 'boolean') this.speakOn = p.speakOn;
         if (typeof p.masterVol === 'number') this.masterVol = p.masterVol;
         if (typeof p.bgmVol === 'number') this.bgmVol = p.bgmVol;
         if (typeof p.sfxVol === 'number') this.sfxVol = p.sfxVol;
@@ -56,7 +58,7 @@
     _savePrefs() {
       try {
         localStorage.setItem(LS_KEY, JSON.stringify({
-          bgmOn: this.bgmOn, sfxOn: this.sfxOn,
+          bgmOn: this.bgmOn, sfxOn: this.sfxOn, speakOn: this.speakOn,
           masterVol: this.masterVol, bgmVol: this.bgmVol, sfxVol: this.sfxVol
         }));
       } catch (_) {}
@@ -132,6 +134,27 @@
       if (this.sfxGain) this.sfxGain.gain.value = this.sfxOn ? this.sfxVol : 0;
       this._savePrefs();
       return this.sfxOn;
+    }
+    toggleSpeak(on) {
+      this.speakOn = typeof on === 'boolean' ? on : !this.speakOn;
+      if (!this.speakOn && window.speechSynthesis) window.speechSynthesis.cancel();
+      this._savePrefs();
+      return this.speakOn;
+    }
+
+    /** 语音播报（出牌等） */
+    speak(text) {
+      if (!this.speakOn) return;
+      if (!window.speechSynthesis) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN';
+        u.rate = 1.15;
+        u.pitch = 1;
+        u.volume = Math.max(0.3, this.masterVol);
+        window.speechSynthesis.speak(u);
+      } catch (_) {}
     }
 
     // ---------- 背景音乐 ----------

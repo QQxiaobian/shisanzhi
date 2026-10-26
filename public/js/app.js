@@ -94,6 +94,7 @@
     seatRight: $('#seat-right'),
     seatBottom: $('#seat-bottom'),
     baseStrip: $('#base-strip'),
+    playAnnounce: $('#play-announce'),
     pile: $('#pile'),
     bumpAlert: $('#bump-alert'),
     bumpDesc: $('#bump-desc'),
@@ -1320,6 +1321,7 @@
     const icon = $a('audio-icon');
     const bgmBtn = $a('audio-bgm-toggle');
     const sfxBtn = $a('audio-sfx-toggle');
+    const speakBtn = $a('audio-speak-toggle');
     const bgmVol = $a('audio-bgm-vol');
     const sfxVol = $a('audio-sfx-vol');
     const masterVol = $a('audio-master-vol');
@@ -1327,6 +1329,7 @@
     const refresh = () => {
       bgmBtn.textContent = A.bgmOn ? '开' : '关';
       sfxBtn.textContent = A.sfxOn ? '开' : '关';
+      if (speakBtn) speakBtn.textContent = A.speakOn ? '开' : '关';
       bgmVol.value = Math.round(A.bgmVol * 100);
       sfxVol.value = Math.round(A.sfxVol * 100);
       masterVol.value = Math.round(A.masterVol * 100);
@@ -1351,25 +1354,47 @@
 
     bgmBtn.addEventListener('click', () => { A.ensure(); A.toggleBGM(); A.click(); refresh(); });
     sfxBtn.addEventListener('click', () => { A.toggleSFX(); A.click(); refresh(); });
+    if (speakBtn) speakBtn.addEventListener('click', () => { A.toggleSpeak(); A.click(); refresh(); });
     bgmVol.addEventListener('input', (e) => { A.setBgmVol(Number(e.target.value) / 100); });
     sfxVol.addEventListener('input', (e) => { A.setSfxVol(Number(e.target.value) / 100); });
     masterVol.addEventListener('input', (e) => { A.setMasterVol(Number(e.target.value) / 100); });
   }
 
-  /** 根据前后两帧状态触发对应音效 */
+  // 出牌播报横幅定时器
+  let announceTimer = null;
+
+  /** 显示出牌播报横幅 + 语音播报 */
+  function announcePlay(text, cls, speakText) {
+    const A = window.Audio;
+    const node = el.playAnnounce;
+    if (!node) return;
+    node.className = `play-announce ${cls || ''}`.trim();
+    node.innerHTML = text;
+    node.hidden = false;
+    // 强制重排后再加 show 触发过渡
+    void node.offsetWidth;
+    node.classList.add('show');
+    if (announceTimer) clearTimeout(announceTimer);
+    announceTimer = setTimeout(() => {
+      node.classList.remove('show');
+      announceTimer = setTimeout(() => { node.hidden = true; }, 220);
+    }, 1600);
+    if (A && speakText) A.speak(speakText);
+  }
+
+  /** 根据前后两帧状态触发对应音效与播报 */
   function playGameSounds(prev, g) {
     const A = window.Audio;
-    if (!A) return;
     if (!prev) return;
     if (g.phase === 'settled' && prev.phase !== 'settled') {
       const rank = g.you && g.you.finishRank;
-      if (rank === 1) A.win();
-      else if (rank === 4) A.lose();
-      else A.collect();
+      if (rank === 1) { A && A.win(); announcePlay('🎉 你是头游！', 'hot', '你赢了，第一名'); }
+      else if (rank === 4) { A && A.lose(); announcePlay('末游…', '', '你是最后一名'); }
+      else if (A) A.collect();
       return;
     }
     if (g.phase === 'handover' && prev.phase !== 'handover') {
-      A.error();
+      A && A.error();
       return;
     }
     if (g.phase !== 'playing') return;
@@ -1380,30 +1405,63 @@
     // 轮到自己
     const wasTurn = prev.you && prev.you.isTurn;
     const isTurn = g.you && g.you.isTurn;
-    if (!wasTurn && isTurn && !base) A.myTurn();
+    if (!wasTurn && isTurn && !base) A && A.myTurn();
 
     // 出牌 / 撞
     if (base && (!prevBase || prevBase.seat !== base.seat || prevBase.type !== base.type || prevBase.rank !== base.rank)) {
-      if (base.type === 'bump') A.bump();
-      else A.cardPlay();
+      const owner = g.seats.find((s) => s.seat === base.seat);
+      const name = owner ? owner.name : '';
+      const isSelf = g.you.seat === base.seat;
+      const displayName = isSelf ? '你' : name;
+      const typeLabel = base.typeLabel;
+      const label = base.label;
+
+      if (base.type === 'bump') {
+        A && A.bump();
+        announcePlay(
+          `<span class="pa-name">${esc(displayName)}</span> 撞！<span class="pa-type">对${esc(label)}</span>`,
+          'bump',
+          `${displayName}撞，对${label}`
+        );
+      } else {
+        A && A.cardPlay();
+        announcePlay(
+          `<span class="pa-name">${esc(displayName)}</span> 打出<span class="pa-type">${esc(typeLabel)}</span>${esc(label)}`,
+          base.type === 'bomb' || base.type === 'thousand' ? 'hot' : '',
+          `${displayName}打出${typeLabel}${label}`
+        );
+      }
       return;
     }
 
     // Pass
     if (g.passes > (prev.passes || 0)) {
-      A.pass();
+      A && A.pass();
+      // 找到刚 Pass 的玩家（turnSeat 已经移到下家，Pass 者是上一家）
+      const passerSeat = g.turnSeat !== null ? (g.turnSeat + 3) % 4 : null;
+      const passer = passerSeat !== null ? g.seats.find((s) => s.seat === passerSeat) : null;
+      if (passer) {
+        const displayName = g.you.seat === passer.seat ? '你' : passer.name;
+        announcePlay(`<span class="pa-name">${esc(displayName)}</span> 不要`, '', `${displayName}不要`);
+      }
       return;
     }
 
     // 收牌：base 从有到无（新一墩开始）
     if (!base && prevBase) {
-      A.collect();
+      A && A.collect();
+      const lastPlay = prev.pile && prev.pile[prev.pile.length - 1];
+      const collector = lastPlay ? g.seats.find((s) => s.seat === lastPlay.seat) : null;
+      if (collector) {
+        const displayName = g.you.seat === collector.seat ? '你' : collector.name;
+        announcePlay(`<span class="pa-name">${esc(displayName)}</span> 收走本轮牌`, '', null);
+      }
       return;
     }
 
     // 发牌：进入 dealing
     if (g.phase === 'playing' && prev.phase === 'dealing' && !base) {
-      A.deal();
+      A && A.deal();
     }
   }
 

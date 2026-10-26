@@ -4,8 +4,7 @@ const BUMP_WINDOW_MS = 5000;
 const TURN_MS = 30000;
 const HANDOVER_MS = 45000;
 const DEALING_MS = 1400;
-const BOT_THINK_MIN = 800;
-const BOT_THINK_MAX = 1800;
+const BOT_THINK_MS = 1000;
 
 const TYPE_LABELS = rules.TYPE_LABELS;
 
@@ -627,7 +626,7 @@ class Game {
 
         const turnPlayer = this.seats[this.turnSeat];
         if (turnPlayer && (turnPlayer.isBot || turnPlayer.auto)) {
-          const delay = Math.max(200, this.turnStartedAt + 1000 + (smallHash(String(this.round) + this.turnSeat + this.pile.length) % 900) - Date.now());
+          const delay = Math.max(150, this.turnStartedAt + BOT_THINK_MS - Date.now());
           this.botTimers.push(setTimeout(() => this.autoAct(this.turnSeat), delay));
         }
       }
