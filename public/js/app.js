@@ -443,6 +443,7 @@
         state.selected.clear();
         refreshMe();
       }
+      playGameSounds(prev, payload);
       renderGame();
     });
 
@@ -1307,10 +1308,111 @@
   }
 
   // =========================================================
+  // 音频
+  // =========================================================
+
+  function bindAudio() {
+    const A = window.Audio;
+    if (!A) return;
+    const $a = (id) => document.getElementById(id);
+    const toggle = $a('audio-toggle');
+    const body = $a('audio-body');
+    const icon = $a('audio-icon');
+    const bgmBtn = $a('audio-bgm-toggle');
+    const sfxBtn = $a('audio-sfx-toggle');
+    const bgmVol = $a('audio-bgm-vol');
+    const sfxVol = $a('audio-sfx-vol');
+    const masterVol = $a('audio-master-vol');
+
+    const refresh = () => {
+      bgmBtn.textContent = A.bgmOn ? '开' : '关';
+      sfxBtn.textContent = A.sfxOn ? '开' : '关';
+      bgmVol.value = Math.round(A.bgmVol * 100);
+      sfxVol.value = Math.round(A.sfxVol * 100);
+      masterVol.value = Math.round(A.masterVol * 100);
+      toggle.classList.toggle('off', !A.bgmOn && !A.sfxOn);
+      icon.textContent = A.bgmOn ? '♪' : '♩';
+    };
+    refresh();
+
+    toggle.addEventListener('click', () => {
+      A.ensure();
+      if (body.hidden) {
+        body.hidden = false;
+      } else {
+        // 点图标快速切换：全部静音/恢复
+        const anyOn = A.bgmOn || A.sfxOn;
+        A.toggleBGM(!anyOn);
+        A.toggleSFX(!anyOn);
+        body.hidden = true;
+      }
+      refresh();
+    });
+
+    bgmBtn.addEventListener('click', () => { A.ensure(); A.toggleBGM(); A.click(); refresh(); });
+    sfxBtn.addEventListener('click', () => { A.toggleSFX(); A.click(); refresh(); });
+    bgmVol.addEventListener('input', (e) => { A.setBgmVol(Number(e.target.value) / 100); });
+    sfxVol.addEventListener('input', (e) => { A.setSfxVol(Number(e.target.value) / 100); });
+    masterVol.addEventListener('input', (e) => { A.setMasterVol(Number(e.target.value) / 100); });
+  }
+
+  /** 根据前后两帧状态触发对应音效 */
+  function playGameSounds(prev, g) {
+    const A = window.Audio;
+    if (!A) return;
+    if (!prev) return;
+    if (g.phase === 'settled' && prev.phase !== 'settled') {
+      const rank = g.you && g.you.finishRank;
+      if (rank === 1) A.win();
+      else if (rank === 4) A.lose();
+      else A.collect();
+      return;
+    }
+    if (g.phase === 'handover' && prev.phase !== 'handover') {
+      A.error();
+      return;
+    }
+    if (g.phase !== 'playing') return;
+
+    const prevBase = prev.base;
+    const base = g.base;
+
+    // 轮到自己
+    const wasTurn = prev.you && prev.you.isTurn;
+    const isTurn = g.you && g.you.isTurn;
+    if (!wasTurn && isTurn && !base) A.myTurn();
+
+    // 出牌 / 撞
+    if (base && (!prevBase || prevBase.seat !== base.seat || prevBase.type !== base.type || prevBase.rank !== base.rank)) {
+      if (base.type === 'bump') A.bump();
+      else A.cardPlay();
+      return;
+    }
+
+    // Pass
+    if (g.passes > (prev.passes || 0)) {
+      A.pass();
+      return;
+    }
+
+    // 收牌：base 从有到无（新一墩开始）
+    if (!base && prevBase) {
+      A.collect();
+      return;
+    }
+
+    // 发牌：进入 dealing
+    if (g.phase === 'playing' && prev.phase === 'dealing' && !base) {
+      A.deal();
+    }
+  }
+
+  // =========================================================
   // 事件绑定
   // =========================================================
 
   function bindUi() {
+    bindAudio();
     el.loginForm.addEventListener('submit', onAuthSubmit);
     $$('.auth-tab').forEach((tab) => {
       tab.addEventListener('click', () => setAuthMode(tab.dataset.authTab));
