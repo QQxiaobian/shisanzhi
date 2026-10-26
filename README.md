@@ -24,12 +24,16 @@ npm start
 
 默认管理员：`admin / admin123`（建议首次登录后修改密码）。
 
-## Docker 部署
+## Docker 部署（无需拉取源码）
+
+只需一个 `docker-compose.yml` 即可部署，镜像托管在 GitHub Container Registry。
 
 ```bash
-git clone https://github.com/QQxiaobian/shisanzhi.git
-cd shisanzhi
-docker compose up -d --build
+# 1) 下载 compose 文件（或复制仓库中的 docker-compose.yml）
+wget https://raw.githubusercontent.com/QQxiaobian/shisanzhi/main/docker-compose.yml
+
+# 2) 启动
+docker compose up -d
 ```
 
 打开 http://localhost:3000 。
@@ -41,8 +45,11 @@ docker compose up -d --build
 ```bash
 ADMIN_USERNAME=admin ADMIN_PASSWORD='your-strong-password' \
 TOKEN_SECRET='a-long-random-string' \
-docker compose up -d --build
+docker compose up -d
 ```
+
+> 镜像由 GitHub Actions 自动构建推送：`ghcr.io/qqxiaobian/shisanzhi:latest`。
+> 如需本地构建镜像，克隆仓库后执行 `docker build -t ghcr.io/qqxiaobian/shisanzhi:latest .`，再运行 `docker compose up -d`。
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |

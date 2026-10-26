@@ -1,7 +1,6 @@
 services:
   thirteen-bid:
-    build: .
-    image: thirteen-bid:latest
+    image: ghcr.io/qqxiaobian/shisanzhi:latest
     container_name: thirteen-bid
     restart: unless-stopped
     ports:
