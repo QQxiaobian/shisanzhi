@@ -246,7 +246,7 @@ io.on('connection', (socket) => {
     return;
   }
 
-  manager.register(socket);
+  manager.register(socket, user);
   socket.emit('session:ready', { user: publicUserOf(user) });
   socket.emit('lobby:state', manager.lobbyPayload());
 
@@ -274,6 +274,12 @@ io.on('connection', (socket) => {
     const u = currentUser(socket);
     if (!u) return reply(cb, { ok: false, error: '账号不可用' });
     reply(cb, manager.addBot(socket, u, payload || {}));
+  });
+
+  socket.on('room:kick', (payload, cb) => {
+    const u = currentUser(socket);
+    if (!u) return reply(cb, { ok: false, error: '账号不可用' });
+    reply(cb, manager.kickSeat(socket, u, payload || {}));
   });
 
   socket.on('room:start', (cb) => {

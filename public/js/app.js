@@ -61,6 +61,8 @@
     regPassword2: $('#reg-password2'),
     registerBtn: $('#register-btn'),
     onlineCount: $('#online-count'),
+    onlineList: $('#online-list'),
+    onlinePanelCount: $('#online-panel-count'),
     myName: $('#my-name'),
     myRole: $('#my-role'),
     adminLink: $('#admin-link'),
@@ -410,9 +412,10 @@
     });
 
     socket.on('lobby:state', (payload) => {
-      state.lobby = payload || { rooms: [], online: 0 };
-      if (state.screen === 'lobby') renderLobby();
+      state.lobby = payload || { rooms: [], online: 0, onlineUsers: [] };
       el.onlineCount.textContent = state.lobby.online ?? 0;
+      renderOnline();
+      if (state.screen === 'lobby') renderLobby();
     });
 
     socket.on('room:state', (payload) => {
@@ -452,6 +455,17 @@
 
     socket.on('room:closed', (payload) => {
       toast((payload && payload.reason) || '房间已关闭');
+      state.room = null;
+      state.game = null;
+      localStorage.removeItem(ROOM_KEY);
+      closeOverlay(el.overlaySettle);
+      closeOverlay(el.overlayHandover);
+      showScreen('lobby');
+      renderLobby();
+    });
+
+    socket.on('room:kicked', (payload) => {
+      toast((payload && payload.reason) || '你已被移出房间');
       state.room = null;
       state.game = null;
       localStorage.removeItem(ROOM_KEY);
@@ -690,6 +704,7 @@
 
   function renderLobby() {
     el.onlineCount.textContent = state.lobby.online ?? 0;
+    renderOnline();
     const rooms = state.lobby.rooms || [];
     el.roomCount.textContent = rooms.length;
     if (!rooms.length) {
@@ -712,6 +727,27 @@
           </div>
           <span class="status-badge ${esc(r.status)}">${label}</span>
           <button class="btn btn-tiny btn-join" data-room="${esc(r.id)}" ${canJoin ? '' : 'disabled'}>加入</button>
+        </div>`;
+      })
+      .join('');
+  }
+
+  function renderOnline() {
+    const users = state.lobby.onlineUsers || [];
+    if (el.onlinePanelCount) el.onlinePanelCount.textContent = users.length;
+    if (!el.onlineList) return;
+    if (!users.length) {
+      el.onlineList.innerHTML = '<div class="empty-state">暂无在线玩家</div>';
+      return;
+    }
+    const meId = state.user ? state.user.id : null;
+    el.onlineList.innerHTML = users
+      .map((u) => {
+        const isMe = meId && u.id === meId;
+        return `<div class="online-row${isMe ? ' me' : ''}">
+          <i class="online-dot"></i>
+          <span class="online-name">${esc(u.name)}${isMe ? ' · 你' : ''}</span>
+          <span class="online-user">@${esc(u.username)}</span>
         </div>`;
       })
       .join('');
@@ -752,6 +788,8 @@
     el.roomStatus.style.color = room.phase === 'playing' ? 'var(--yellow)' : room.phase === 'settled' ? 'var(--purple)' : 'var(--teal)';
 
     const seats = room.seats || [null, null, null, null];
+    const hostId = seats[room.hostSeat] ? seats[room.hostSeat].userId : null;
+    const hostViewer = !!(state.user && hostId && hostId === state.user.id);
     el.roomSeats.innerHTML = seats
       .map((s, i) => {
         if (!s) {
@@ -764,9 +802,11 @@
         const isMe = state.user && s.userId === state.user.id;
         const isHost = room.hostSeat === i;
         const offline = !s.connected;
+        const canKick = hostViewer && !isHost && room.phase !== 'playing';
         return `<div class="seat-box ${isMe ? 'me' : ''}">
           <div class="seat-index">SEAT ${i + 1}</div>
           ${isHost ? '<div class="seat-badge host">HOST</div>' : s.isBot ? '<div class="seat-badge">BOT</div>' : ''}
+          ${canKick ? `<button class="seat-remove" data-kick="${i}" title="移除该玩家">✕</button>` : ''}
           ${avatarSvg(i)}
           <div class="seat-name">${esc(s.name)}${isMe ? ' · 你' : ''}</div>
           <div class="seat-user">@${esc(s.username)}</div>
@@ -777,10 +817,10 @@
 
     const humans = seats.filter((s) => s && !s.isBot).length;
     const filled = seats.filter(Boolean).length;
-    const isHost = state.user && seats[room.hostSeat] && seats[room.hostSeat].userId === state.user.id;
+    const isHost = hostViewer;
     el.btnStart.hidden = !isHost || room.phase === 'playing';
     el.btnStart.disabled = filled < 4 || room.phase === 'playing';
-    el.btnAddBot.hidden = filled >= 4 || room.phase === 'playing';
+    el.btnAddBot.hidden = !isHost || filled >= 4 || room.phase === 'playing';
     el.roomHint.textContent =
       room.phase === 'playing'
         ? '游戏进行中'
@@ -1326,6 +1366,16 @@
     $('#btn-add-bot').addEventListener('click', async () => {
       const res = await socketCall('room:addBot', {});
       if (!res.ok) toast(res.error || '添加失败');
+    });
+    el.roomSeats.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-kick]');
+      if (!btn) return;
+      btn.disabled = true;
+      const res = await socketCall('room:kick', { seat: Number(btn.dataset.kick) });
+      if (!res.ok) {
+        toast(res.error || '移除失败');
+        btn.disabled = false;
+      }
     });
     $('#btn-start').addEventListener('click', async () => {
       el.btnStart.disabled = true;

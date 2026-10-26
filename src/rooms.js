@@ -23,11 +23,20 @@ class RoomManager {
     this.io = io;
     this.store = store;
     this.rooms = new Map();
-    this.online = new Set();
+    this.online = new Map();
     this.botCounter = 0;
   }
 
   // ---------- 大厅 ----------
+
+  // 在线玩家（同一账号多窗口只算一次）
+  onlineUsers() {
+    const seen = new Map();
+    for (const u of this.online.values()) {
+      if (!seen.has(u.id)) seen.set(u.id, { id: u.id, username: u.username, name: u.name });
+    }
+    return Array.from(seen.values()).sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh'));
+  }
 
   lobbyPayload() {
     const rooms = [];
@@ -45,7 +54,8 @@ class RoomManager {
       });
     }
     rooms.sort((a, b) => (a.status === 'waiting' ? -1 : 1) - (b.status === 'waiting' ? -1 : 1));
-    return { rooms, online: this.online.size };
+    const onlineUsers = this.onlineUsers();
+    return { rooms, online: onlineUsers.length, onlineUsers };
   }
 
   broadcastLobby() {
@@ -255,6 +265,37 @@ class RoomManager {
     return { ok: true };
   }
 
+  // 房主移除座位上的玩家（机器人或真人）
+  kickSeat(socket, user, payload) {
+    const room = this.roomOf(socket);
+    if (!room) return { ok: false, error: '你不在房间中' };
+    const host = room.seats[room.hostSeat];
+    if (!host || host.userId !== user.id) return { ok: false, error: '只有房主可以移除座位' };
+
+    const seatIndex = Number(payload && payload.seat);
+    if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= room.seats.length) {
+      return { ok: false, error: '座位号无效' };
+    }
+    if (seatIndex === room.hostSeat) return { ok: false, error: '不能移除房主自己' };
+    const seat = room.seats[seatIndex];
+    if (!seat) return { ok: false, error: '该座位是空的' };
+    if (room.game && (room.game.phase === 'playing' || room.game.phase === 'handover')) {
+      return { ok: false, error: '游戏进行中无法移除玩家' };
+    }
+
+    if (!seat.isBot && seat.socketId) {
+      const target = this.io.sockets.sockets.get(seat.socketId);
+      if (target) {
+        target.emit('room:kicked', { reason: '你已被房主移出房间' });
+        target.leave(room.id);
+        target.data.roomId = null;
+      }
+    }
+    room.scores[seatIndex] = 0;
+    this.removeSeat(room, seatIndex, false);
+    return { ok: true };
+  }
+
   startNextRound(socket, user) {
     const room = this.roomOf(socket);
     if (!room) return { ok: false, error: '你不在房间中' };
@@ -355,8 +396,8 @@ class RoomManager {
 
   // ---------- 连接 ----------
 
-  register(socket) {
-    this.online.add(socket.id);
+  register(socket, user) {
+    this.online.set(socket.id, { id: user.id, username: user.username, name: user.name });
     this.broadcastLobby();
   }
 
