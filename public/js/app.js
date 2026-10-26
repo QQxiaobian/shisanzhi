@@ -290,13 +290,6 @@
       return { ok: false, kind: 'bad', text: '禁止保留全部为 2 的手牌收尾' };
     }
 
-    if (game.opening) {
-      if (!cards.some((c) => c.id === 'S3')) {
-        return { ok: false, kind: 'bad', text: '首出必须包含黑桃3' };
-      }
-      if (combo.rank !== 3) return { ok: false, kind: 'bad', text: '首出只能出 3 的牌组' };
-    }
-
     const base = game.base;
     if (!base) {
       return { ok: true, text: `可出：${TYPE_LABEL[combo.type]} ${combo.label}` };
@@ -1053,8 +1046,7 @@
       hint = '撞倒计时中，等待其他玩家抢撞或倒计时结束…';
     } else if (isTurn) {
       if (!g.base) {
-        hint = g.opening ? '首出必须包含黑桃3（单张♠3 / 对3 / 炸弹3 / 千弹3）' : '新一轮由你先出';
-        hintClass = g.opening ? 'warn' : '';
+        hint = '本轮由你先出，可自由出牌';
       } else if (cards.length && evalResult) {
         hint = evalResult.text;
         hintClass = evalResult.ok ? 'good' : 'warn';
@@ -1075,7 +1067,7 @@
   function renderBase(g) {
     if (!g.base) {
       el.baseStrip.className = 'base-strip';
-      el.baseStrip.innerHTML = g.opening ? '等待黑桃3强制首出…' : '新一轮 · 自由出牌';
+      el.baseStrip.innerHTML = '新一轮 · 自由出牌';
       return;
     }
     const owner = g.seats.find((s) => s.seat === g.base.seat);

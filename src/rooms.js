@@ -122,6 +122,7 @@ class RoomManager {
       scores: [0, 0, 0, 0],
       round: 0,
       dealerSeat: null,
+      openerSeat: null,
       game: null
     };
     room.seats[0] = {
@@ -321,6 +322,7 @@ class RoomManager {
       players,
       round: room.round,
       dealerSeat: room.dealerSeat,
+      openerSeat: room.openerSeat,
       onChange: () => this.broadcastGame(room),
       onRoundEnd: (results) => this.handleRoundEnd(room, results)
     });
@@ -333,6 +335,7 @@ class RoomManager {
   handleRoundEnd(room, results) {
     room.round = results.round;
     room.dealerSeat = results.nextDealer;
+    if (results.nextOpener !== undefined) room.openerSeat = results.nextOpener;
     for (const row of results.rows) {
       room.scores[row.seat] = row.totalScore;
       if (row.userId && !row.isBot) {

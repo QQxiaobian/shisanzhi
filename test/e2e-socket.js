@@ -109,9 +109,10 @@ async function main() {
           if (!openerState) return; // 等先手玩家的状态
           openerSeat = g.turnSeat;
           firstTurn = g.you.seat;
+          firstPlayChecked = true;
           const hand = openerState.you.hand;
-          if (!hand.some((c) => c.id === 'S3')) throw new Error('先手玩家没有黑桃3');
-          console.log(`[ok] 黑桃3先手：seat ${openerSeat}，手牌 ${hand.length} 张`);
+          if (!hand.some((c) => c.id === 'S3')) throw new Error('第一局先手玩家没有黑桃3');
+          console.log(`[ok] 第一局黑桃3持有者先手（可自由出牌）：seat ${openerSeat}，手牌 ${hand.length} 张`);
 
           // 强制出牌校验：先手尝试 Pass
           if (!passGuardChecked) {
@@ -161,23 +162,6 @@ async function main() {
         if (g.phase !== 'playing' || !g.you.isTurn || g.you.finishRank) return;
         if (acting[g.you.seat]) return;
         acting[g.you.seat] = true;
-
-        if (g.base && g.pile.length && !firstPlayChecked && g.pile.length === 1) {
-          const first = g.pile[0];
-          if (!first.cards.some((c) => c.id === 'S3')) throw new Error('首出没有包含黑桃3');
-          firstPlayChecked = true;
-          console.log('[ok] 首出包含黑桃3');
-        }
-
-        // 有「撞」窗口时偶尔演示撞
-        if (g.you.canBump && g.bump && Math.random() < 0.5) {
-          const res = await new Promise((resolve) => socket.emit('game:bump', resolve));
-          acting[g.you.seat] = false;
-          if (res.ok) {
-            console.log(`[撞] seat ${g.you.seat} 用对${g.bump.label}撞`);
-            return;
-          }
-        }
 
         if (g.you.legalPlays.length > 0) {
           const ids = g.you.legalPlays[0].ids;

@@ -167,10 +167,8 @@ function groupByRank(hand) {
  * 枚举当前手牌所有合规的普通出牌（不含撞）
  * @param hand 手牌
  * @param base 当前基准（null 表示新一轮首出）
- * @param opts.opening 是否为黑桃3强制首出
  */
-function enumeratePlays(hand, base = null, opts = {}) {
-  const { opening = false } = opts;
+function enumeratePlays(hand, base = null) {
   const groups = groupByRank(hand);
   const result = [];
 
@@ -181,26 +179,13 @@ function enumeratePlays(hand, base = null, opts = {}) {
         // 同点对子属于“撞”，不放进普通出牌列表
         continue;
       }
-      let chosen = cards.slice(0, size);
-
-      if (opening) {
-        if (rank !== 3) continue;
-        // 必须包含黑桃3
-        const spade3 = hand.find((c) => c.id === 'S3');
-        if (!spade3 || !chosen.some((c) => c.id === 'S3')) {
-          chosen = [spade3, ...cards.filter((c) => c.id !== 'S3').slice(0, size - 1)];
-        }
-      }
+      const chosen = cards.slice(0, size);
 
       const combo = analyzeCombo(chosen);
       if (!combo) continue;
       if (leavesOnlyTwos(hand, chosen.map((c) => c.id))) continue;
 
-      if (base) {
-        if (!canBeatCombo(base, combo)) continue;
-      } else if (opening && !chosen.some((c) => c.id === 'S3')) {
-        continue;
-      }
+      if (base && !canBeatCombo(base, combo)) continue;
 
       result.push({
         ids: chosen.map((c) => c.id),

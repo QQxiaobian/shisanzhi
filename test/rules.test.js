@@ -82,16 +82,12 @@ test('禁止留 2：出牌后剩余全为 2 则非法', () => {
   assert.equal(rules.leavesOnlyTwos([card('S2')], ['S2']), false); // 出完可以
 });
 
-test('枚举合法出牌：黑桃3强制首出', () => {
+test('枚举合法出牌：首出不受黑桃3限制，可自由出牌', () => {
   const hand = [card('S3'), card('H3'), card('S7'), card('H8')];
-  const plays = rules.enumeratePlays(hand, null, { opening: true });
-  assert.ok(plays.length >= 2);
-  for (const p of plays) {
-    assert.ok(p.ids.includes('S3'), '每一手都必须包含黑桃3');
-    assert.equal(p.rank, 3);
-  }
-  assert.ok(plays.some((p) => p.type === 'single'));
-  assert.ok(plays.some((p) => p.type === 'pair'));
+  const plays = rules.enumeratePlays(hand, null);
+  assert.ok(plays.some((p) => p.ids.includes('S3')), '可以出黑桃3');
+  assert.ok(plays.some((p) => p.type === 'single' && p.rank === 7), '非 3 的牌也可首出');
+  assert.ok(plays.some((p) => p.type === 'pair' && p.rank === 3), '对3 也可首出');
 });
 
 test('枚举合法出牌：无解时允许 Pass（空数组）', () => {

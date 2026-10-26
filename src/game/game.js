@@ -26,7 +26,7 @@ class Game {
    * @param {Function} opts.onChange 状态变化回调
    * @param {Function} opts.onRoundEnd 结算回调
    */
-  constructor({ room, players, onChange, onRoundEnd, round = 0, dealerSeat = null }) {
+  constructor({ room, players, onChange, onRoundEnd, round = 0, dealerSeat = null, openerSeat = null }) {
     this.room = room;
     this.onChange = onChange || (() => {});
     this.onRoundEnd = onRoundEnd || (() => {});
@@ -52,6 +52,7 @@ class Game {
     this.phase = 'waiting';
     this.round = round;
     this.dealerSeat = dealerSeat;
+    this.openerSeat = openerSeat;
     this.lastFourthSeat = null;
     this.turnSeat = null;
     this.base = null;
@@ -167,11 +168,19 @@ class Game {
   startPlaying() {
     if (this.phase !== 'dealing') return;
     this.phase = 'playing';
-    const opener = this.seats.find((s) => s.hand.some((c) => c.id === 'S3'));
-    this.turnSeat = opener ? opener.seat : 0;
+
+    // 第一局由黑桃3持有者先出牌；之后每局由上局末游先出牌
+    let openerSeat = this.openerSeat;
+    let reason = '（上局末游）先出牌';
+    if (this.round <= 1 || openerSeat === null || openerSeat === undefined) {
+      const holder = this.seats.find((s) => s.hand.some((c) => c.id === 'S3'));
+      openerSeat = holder ? holder.seat : 0;
+      reason = '持有黑桃3，先出牌';
+    }
+    this.turnSeat = openerSeat;
     this.turnStartedAt = Date.now();
     this.turnDeadline = Date.now() + TURN_MS;
-    this.addLog(`${this.seats[this.turnSeat].name} 持有黑桃3，强制首出`, 'system');
+    this.addLog(`${this.seats[this.turnSeat].name} ${reason}（可自由出牌）`, 'system');
     this.refreshTimers();
     this.onChange();
   }
@@ -190,7 +199,8 @@ class Game {
       this.finishOrder.push(s.seat);
     });
     this.lastFourthSeat = others[others.length - 1] ? others[others.length - 1].seat : (winnerSeat + 1) % 4;
-    this.dealerSeat = this.lastFourthSeat;
+    this.openerSeat = this.lastFourthSeat;
+    this.dealerSeat = winnerSeat;
 
     this.addLog(`${winner.name} 十三烂（3~2 各一张），直接获胜！其余三家各输 13 分`, 'finish');
 
@@ -216,7 +226,8 @@ class Game {
       rows,
       handover: { fromSeat: null, toSeat: null, cards: [] },
       thirteenBroken: winnerSeat,
-      nextDealer: this.dealerSeat
+      nextDealer: winnerSeat,
+      nextOpener: this.openerSeat
     };
     this.onRoundEnd(this.results, this.seats);
     this.onChange();
@@ -244,15 +255,6 @@ class Game {
 
     const resolved = rules.resolvePlay(this.base, cards, this.isBumpWindowOpen());
     if (!resolved.ok) return { ok: false, error: resolved.reason };
-
-    if (this.opening) {
-      if (!cards.some((c) => c.id === 'S3')) {
-        return { ok: false, error: '本局首出必须包含黑桃3' };
-      }
-      if (cards[0].rank !== 3) {
-        return { ok: false, error: '首出只能用 3（含黑桃3）' };
-      }
-    }
 
     if (rules.leavesOnlyTwos(player.hand, ids)) {
       return { ok: false, error: '禁止保留全部为 2 的手牌收尾' };
@@ -351,19 +353,39 @@ class Game {
     }
 
     if (play.type === 'single') {
-      this.bumpWindow = { rank: play.rank, label: play.label, deadline: Date.now() + BUMP_WINDOW_MS };
-      this.turnSeat = null; // 撞窗口期间无人能出牌，只能抢撞
-      this.addLog(`开启撞倒计时（${BUMP_WINDOW_MS / 1000}s）：可用对${play.label}抢撞`, 'bump');
-      this.refreshTimers();
-      this.onChange();
-      return;
+      // 撞为强制行为：单张打出后，若某家持有该点数的普通对子（恰好 2 张，不拆炸弹/千弹），系统直接出牌
+      const bumperSeat = this.findBumpSeat(play.rank, seat);
+      if (bumperSeat !== null) {
+        const bumpCards = rules.findBumpCards(this.seats[bumperSeat].hand, play);
+        this.addLog(`${this.seats[bumperSeat].name} 持有对${play.label}，系统自动撞！`, 'bump');
+        this.applyPlay(bumperSeat, bumpCards, {
+          type: 'bump',
+          rank: play.rank,
+          label: play.label,
+          size: 2
+        });
+        return;
+      }
     }
 
-    this.bumpWindow = null;
     this.turnSeat = this.nextActive(seat);
     this.startTurnClock();
     this.refreshTimers();
     this.onChange();
+  }
+
+  /** 找出必须撞的座位：按出牌顺序，首个恰好持有该点数 2 张（非炸弹/千弹）且撞后不会只剩 2 的玩家 */
+  findBumpSeat(rank, fromSeat) {
+    for (let i = 1; i <= 3; i++) {
+      const seat = (fromSeat + i) % 4;
+      const s = this.seats[seat];
+      if (!s || s.finishRank !== null || s.hand.length === 0) continue;
+      const same = s.hand.filter((c) => c.rank === rank);
+      if (same.length !== 2) continue;
+      if (rules.leavesOnlyTwos(s.hand, same.map((c) => c.id))) continue;
+      return seat;
+    }
+    return null;
   }
 
   endTrick() {
@@ -488,8 +510,11 @@ class Game {
 
     const fourth = this.seats.find((s) => s.finishRank === null);
     const fourthSeat = fourth ? fourth.seat : 3;
+    const first = this.seats.find((s) => s.finishRank === 1);
+    const firstSeat = first ? first.seat : 0;
     this.lastFourthSeat = fourthSeat;
-    this.dealerSeat = fourthSeat;
+    this.openerSeat = fourthSeat;
+    this.dealerSeat = firstSeat;
 
     // 收牌数口径：末家剩余手牌计入其收牌，上缴的牌由末家转给头家，
     // 四人收牌合计恒为 52，因此本局输赢总和为 0
@@ -528,7 +553,8 @@ class Game {
         toSeat,
         cards: chosen.map((c) => ({ id: c.id, label: c.label, suit: c.suit, symbol: c.symbol, red: c.red }))
       },
-      nextDealer: fourthSeat
+      nextDealer: firstSeat,
+      nextOpener: fourthSeat
     };
 
     this.handover = null;
@@ -642,7 +668,7 @@ class Game {
     const player = this.seats[seat];
     if (!player || player.finishRank !== null) return;
 
-    const legal = rules.enumeratePlays(player.hand, this.base, { opening: this.opening });
+    const legal = rules.enumeratePlays(player.hand, this.base);
     if (legal.length > 0) {
       const pick = legal[0];
       const res = this.play(seat, pick.ids);
@@ -659,7 +685,7 @@ class Game {
     }
 
     if (!this.base) {
-      this.addLog(`${player.name} 首出受限，顺延`, 'system');
+      this.addLog(`${player.name} 无牌可出，顺延`, 'system');
       this.opening = false;
       this.turnSeat = this.nextActive(seat);
       this.startTurnClock();
@@ -725,7 +751,7 @@ class Game {
     let canBumpNow = false;
     if (viewer && viewer.finishRank === null && this.phase === 'playing') {
       if (isTurn) {
-        legalPlays = rules.enumeratePlays(viewer.hand, this.base, { opening: this.opening });
+        legalPlays = rules.enumeratePlays(viewer.hand, this.base);
       }
       canBumpNow = this.isBumpWindowOpen() && this.base.seat !== viewerSeat && rules.canBump(viewer.hand, this.base);
     }
