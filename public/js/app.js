@@ -1392,19 +1392,15 @@
 
     // 出牌 / 撞
     if (base && (!prevBase || prevBase.seat !== base.seat || prevBase.type !== base.type || prevBase.rank !== base.rank)) {
-      const owner = g.seats.find((s) => s.seat === base.seat);
-      const name = owner ? owner.name : '';
-      const isSelf = g.you.seat === base.seat;
-      const displayName = isSelf ? '你' : name;
       const typeLabel = base.typeLabel;
       const label = base.label;
 
       if (base.type === 'bump') {
         A && A.bump();
-        announcePlay(`${displayName}撞，对${label}`);
+        announcePlay(`撞，对${label}`);
       } else {
         A && A.cardPlay();
-        announcePlay(`${displayName}打出${typeLabel}${label}`);
+        announcePlay(`${typeLabel}${label}`);
       }
       return;
     }
@@ -1412,24 +1408,14 @@
     // Pass
     if (g.passes > (prev.passes || 0)) {
       A && A.pass();
-      const passerSeat = g.turnSeat !== null ? (g.turnSeat + 3) % 4 : null;
-      const passer = passerSeat !== null ? g.seats.find((s) => s.seat === passerSeat) : null;
-      if (passer) {
-        const displayName = g.you.seat === passer.seat ? '你' : passer.name;
-        announcePlay(`${displayName}不要`);
-      }
+      announcePlay('不要');
       return;
     }
 
     // 收牌
     if (!base && prevBase) {
       A && A.collect();
-      const lastPlay = prev.pile && prev.pile[prev.pile.length - 1];
-      const collector = lastPlay ? g.seats.find((s) => s.seat === lastPlay.seat) : null;
-      if (collector) {
-        const displayName = g.you.seat === collector.seat ? '你' : collector.name;
-        announcePlay(`${displayName}收牌`);
-      }
+      announcePlay('收牌');
       return;
     }
 
